@@ -9,7 +9,7 @@ import LedgerTable from '../components/transactions/LedgerTable.vue'
 
 <template>
   <MainLayout>
-    <div class="w-full px-margin-desktop py-space-xl space-y-space-lg">
+    <div class="w-full px-4 sm:px-6 lg:px-margin-desktop py-6 lg:py-space-xl space-y-space-lg">
       <!-- Alert Banners -->
       <AlertBanners />
 
@@ -24,7 +24,7 @@ import LedgerTable from '../components/transactions/LedgerTable.vue'
         </div>
 
         <!-- Sidebar Widgets (1/4 width on desktop) -->
-        <div class="lg:col-span-1 flex flex-col gap-space-lg">
+        <div class="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-space-lg">
           <ParticipationCard />
           <CategoryBreakdownWidget />
         </div>

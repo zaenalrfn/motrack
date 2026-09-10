@@ -7,6 +7,10 @@ import GranularVisibilityMatrix from '../components/anggaran/GranularVisibilityM
 
 const showBulkModal = ref(false)
 
+const triggerAddBudget = () => {
+  document.dispatchEvent(new CustomEvent('open-add-budget'))
+}
+
 const openBulkModal = () => {
   showBulkModal.value = true
 }
@@ -25,30 +29,28 @@ const applyBulkGrant = () => {
 
 <template>
   <MainLayout>
-    <div class="w-full px-margin-desktop py-space-xl space-y-space-2xl">
-      <!-- Top Hero & Controls Bar -->
-      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg">
-        <div class="flex flex-col gap-space-xs">
-          <div class="flex items-center gap-space-xs">
-            <span class="px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-sm text-label-sm uppercase tracking-wider font-semibold">FR-05 • Kontrol Anggaran Bulanan</span>
-            <span class="flex items-center gap-1 font-label-sm text-label-sm text-secondary font-semibold">
+    <div class="w-full px-4 sm:px-6 lg:px-margin-desktop py-6 lg:py-space-xl space-y-space-xl lg:space-y-space-2xl">
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md lg:gap-space-lg">
+        <div class="flex flex-col gap-space-xs min-w-0">
+          <div class="flex flex-wrap items-center gap-space-xs">
+            <span class="px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-sm text-label-sm uppercase tracking-wider font-semibold whitespace-nowrap">FR-05 • Anggaran Bulanan</span>
+            <span class="flex items-center gap-1 font-label-sm text-label-sm text-secondary font-semibold whitespace-nowrap">
               <span class="material-symbols-outlined text-[15px] fill-1">verified_user</span> Hak Admin Aktif
             </span>
           </div>
-          <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">Pengaturan Anggaran September 2026</h1>
-          <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-            Kelola pagu maksimal pengeluaran rumah tangga dan atur pembatasan transparansi visibilitas per anggota keluarga secara tersentralisir.
+          <h1 class="text-[24px] sm:text-[28px] lg:text-headline-lg lg:text-[32px] text-on-surface tracking-tight font-bold leading-tight">Pengaturan Anggaran September 2026</h1>
+          <p class="text-sm sm:text-body-md text-on-surface-variant max-w-2xl">
+            <strong>Wadah (Kategori)</strong> untuk mencatat transaksi, <strong>Isi (Pagu)</strong> untuk batas maksimal bulanan.
           </p>
         </div>
 
-        <!-- Main Action Buttons -->
-        <div class="flex flex-wrap items-center gap-space-sm">
-          <button @click="openBulkModal" class="flex items-center gap-space-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-space-lg py-space-sm rounded-full font-label-lg transition-transform active:scale-95 shadow-sm">
+        <div class="flex flex-col sm:flex-row lg:flex-wrap items-stretch sm:items-center gap-space-sm shrink-0">
+          <button @click="openBulkModal" class="flex items-center justify-center gap-space-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-space-lg py-3 rounded-full font-label-lg transition-transform active:scale-95 shadow-sm whitespace-nowrap">
             <span class="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
-            <span>Bulk Grant Izin Budget</span>
+            <span>Bulk Grant Izin</span>
             <span class="px-space-xs py-0.5 rounded-full bg-primary text-on-primary font-label-sm">FR-18</span>
           </button>
-          <button class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-space-sm rounded-full font-label-lg transition-transform active:scale-95 shadow-sm">
+          <button @click="triggerAddBudget" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-3 rounded-full font-label-lg transition-transform active:scale-95 shadow-sm whitespace-nowrap">
             <span class="material-symbols-outlined text-[20px]">add_circle</span>
             <span>+ Tambah Pagu Kategori</span>
           </button>
@@ -65,8 +67,8 @@ const applyBulkGrant = () => {
       <GranularVisibilityMatrix @open-bulk="openBulkModal" />
 
       <!-- Bulk Grant Modal -->
-      <div v-if="showBulkModal" class="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-on-surface/40 backdrop-blur-md">
-        <div class="w-full max-w-2xl bg-surface-container-lowest rounded-lg shadow-xl p-space-xl flex flex-col gap-space-lg relative overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+      <div v-if="showBulkModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/40 backdrop-blur-md overflow-y-auto">
+        <div class="w-full max-w-2xl bg-surface-container-lowest rounded-3xl shadow-xl p-5 sm:p-space-xl flex flex-col gap-space-md sm:gap-space-lg relative overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200 my-4">
           <!-- Modal Header -->
           <div class="flex items-start justify-between">
             <div class="flex items-center gap-space-sm">
@@ -112,11 +114,11 @@ const applyBulkGrant = () => {
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center justify-end gap-space-sm pt-space-xs">
-            <button @click="closeBulkModal" class="px-space-lg py-space-sm rounded-full font-label-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+          <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-space-sm pt-space-xs">
+            <button @click="closeBulkModal" class="px-space-lg py-3 rounded-full font-label-lg text-on-surface-variant hover:bg-surface-container transition-colors">
               Batal
             </button>
-            <button @click="applyBulkGrant" class="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-xl py-space-sm rounded-full font-label-lg font-semibold transition-all active:scale-95 shadow-md">
+            <button @click="applyBulkGrant" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-xl py-3 rounded-full font-label-lg font-semibold transition-all active:scale-95 shadow-md whitespace-nowrap">
               <span class="material-symbols-outlined text-[20px]">check_circle</span>
               <span>Terapkan Izin Massal</span>
             </button>

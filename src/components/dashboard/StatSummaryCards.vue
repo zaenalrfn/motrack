@@ -3,20 +3,15 @@
     <!-- Total Saldo Bersama -->
     <div class="bg-surface-container-lowest rounded-lg p-space-lg shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
       <div class="flex items-center justify-between text-on-surface-variant mb-space-sm">
-        <span class="font-label-md text-label-md font-medium tracking-wide">Saldo Kas Keluarga</span>
+        <span class="font-label-md text-label-md font-medium tracking-wide">Saldo Kas</span>
         <span class="material-symbols-outlined text-secondary text-[22px]">account_balance</span>
       </div>
       <div class="flex flex-col">
-        <span class="font-display-lg text-[32px] tracking-tight text-on-surface leading-tight font-bold">Rp 28.450.000</span>
+        <span class="font-display-lg text-[26px] sm:text-[32px] tracking-tight text-on-surface leading-tight font-bold">Rp 28.450.000</span>
         <div class="flex items-center gap-1.5 mt-space-xs text-secondary font-label-sm text-label-sm">
           <span class="material-symbols-outlined text-[14px]">trending_up</span>
           <span class="font-semibold">+14.2%</span>
-          <span class="text-on-surface-variant font-normal">dari bulan lalu</span>
         </div>
-      </div>
-      <div class="mt-space-md pt-space-xs flex items-center justify-between border-t border-surface-container text-body-sm text-on-surface-variant">
-        <span>3 Rekening Terkoneksi</span>
-        <span class="font-semibold text-on-surface">BCA • Mandiri • Tunai</span>
       </div>
     </div>
     
