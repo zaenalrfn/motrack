@@ -1,0 +1,35 @@
+{
+  "name": "motrack",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "clsx": "^2.1.1",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
+    "lucide-vue-next": "^0.477.0",
+    "papaparse": "^5.5.2",
+    "pinia": "^3.0.1",
+    "tailwind-merge": "^3.0.2",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^22.13.8",
+    "@types/papaparse": "^5.3.15",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.7.3",
+    "vite": "^6.2.0",
+    "vue-tsc": "^2.2.4"
+  }
+}
