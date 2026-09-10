@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AddMemberModal from './AddMemberModal.vue'
 
-const link = ref('https://keluargatrack.id/join/hh-rina-88f29c01')
+const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173'
+const link = ref(`${baseUrl}/join/hh-rina-88f29c01`)
 const copied = ref(false)
 
 const copyLink = () => {
@@ -12,7 +14,7 @@ const copyLink = () => {
 
 const resetLink = () => {
   const rand = Math.random().toString(36).substring(2, 8)
-  link.value = `https://keluargatrack.id/join/hh-rina-${rand}`
+  link.value = `${baseUrl}/join/hh-rina-${rand}`
 }
 </script>
 
@@ -59,6 +61,7 @@ const resetLink = () => {
           <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold ring-2 ring-surface-container-lowest">F</div>
           <div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-semibold border border-dashed border-outline/50">+2</div>
         </div>
+        <AddMemberModal />
       </div>
     </div>
 
