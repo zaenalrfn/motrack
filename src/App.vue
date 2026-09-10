@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { ref, provide } from 'vue'
+import { ref, provide, onMounted } from 'vue'
 import TransactionModal from './components/transactions/TransactionModal.vue'
+import { useAuthStore } from './stores/useAuthStore'
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+  authStore.initAuth()
+})
 
 const isModalOpen = ref(false)
 const openTransactionModal = () => {

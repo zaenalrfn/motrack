@@ -1,35 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useBudgetStore } from '../../stores/useBudgetStore'
 
 defineProps<{
   isOpen: boolean
 }>()
 
 const emit = defineEmits(['close', 'save'])
+const budgetStore = useBudgetStore()
 
 const type = ref<'expense' | 'income'>('expense')
 const amount = ref('')
-const category = ref('Makanan & Dapur')
+const selectedCategoryName = ref('Makanan & Groceries')
 const date = ref(new Date().toISOString().split('T')[0])
-const account = ref('Tunai')
+const account = ref('Tunai / Dompet')
 const note = ref('')
 
-const categories = {
-  expense: ['Makanan & Dapur', 'Tagihan & Utilitas', 'Pendidikan & Les', 'Transportasi', 'Hiburan & Rekreasi', 'Lainnya'],
-  income: ['Gaji Pokok', 'Bonus / THR', 'Pemasukan Tambahan / Freelance', 'Hasil Investasi', 'Lainnya']
-}
+const categories = computed(() => budgetStore.categories.filter(c => c.type === type.value))
 
 const handleSave = () => {
   if (!amount.value || Number(amount.value) <= 0) return
   
+  const category = budgetStore.categories.find(c => c.name === selectedCategoryName.value)
+  if (!category) return
+
   const newTransaction = {
-    id: 't_' + Math.random().toString(36).substring(2, 9),
+    category_id: category.id,
     type: type.value,
     amount: Number(amount.value),
-    category: category.value,
     date: date.value,
-    account: account.value,
-    note: note.value || (type.value === 'expense' ? 'Pengeluaran Rumah Tangga' : 'Pemasukan Keluarga'),
+    note: `${note.value || ''} [via ${account.value}]`.trim(),
     createdAt: new Date().toISOString()
   }
 
@@ -107,10 +107,10 @@ const handleSave = () => {
           <div>
             <label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Kategori</label>
             <select 
-              v-model="category"
+              v-model="selectedCategoryName"
               class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium cursor-pointer"
             >
-              <option v-for="cat in categories[type]" :key="cat" :value="cat">{{ cat }}</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
             </select>
           </div>
           <div>

@@ -1,22 +1,43 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/useAuthStore'
+import { supabase } from '../services/supabaseClient'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const email = ref(route.query.email ? decodeURIComponent(String(route.query.email)) : '')
 const password = ref(route.query.pwd ? decodeURIComponent(String(route.query.pwd)) : '')
 const passwordVisible = ref(false)
 const loading = ref(false)
+const errorMessage = ref('')
 
-const handleClaim = () => {
+const handleClaim = async () => {
   if (!email.value || !password.value) return
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
+  errorMessage.value = ''
+  
+  try {
+    await authStore.login(email.value, password.value)
+    
+    // Update member status to active if pending
+    if (authStore.currentMember && authStore.currentMember.status === 'pending') {
+      await supabase
+        .from('members')
+        .update({ status: 'active' })
+        .eq('id', authStore.currentMember.id)
+      
+      await authStore.fetchHouseholdAndMember()
+    }
+
     router.push('/')
-  }, 800)
+  } catch (err: any) {
+    errorMessage.value = err.message || 'Gagal mengklaim akun. Periksa kembali kredensial Anda.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

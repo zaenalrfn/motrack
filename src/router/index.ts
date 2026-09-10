@@ -5,6 +5,7 @@ import HakAksesView from '../views/HakAksesView.vue'
 import BackupRestoreView from '../views/BackupRestoreView.vue'
 import WelcomeView from '../views/WelcomeView.vue'
 import LoginView from '../views/LoginView.vue'
+import { supabase } from '../services/supabaseClient'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,17 +24,20 @@ const router = createRouter({
     {
       path: '/anggaran',
       name: 'anggaran',
-      component: AnggaranView
+      component: AnggaranView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/hak-akses',
       name: 'hak-akses',
-      component: HakAksesView
+      component: HakAksesView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/backup-restore',
       name: 'backup-restore',
-      component: BackupRestoreView
+      component: BackupRestoreView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/auth/welcome',
@@ -41,6 +45,19 @@ const router = createRouter({
       component: WelcomeView
     }
   ]
+})
+
+router.beforeEach(async (to, _from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (requiresAuth && !session) {
+    next('/login')
+  } else if (to.path === '/login' && session) {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router
