@@ -60,7 +60,7 @@ export const useBudgetStore = defineStore('budget', () => {
     }
   }
 
-  const runMutation = async (operation: () => Promise<void>) => {
+  const runMutation = async (operation: () => Promise<unknown>) => {
     saving.value = true
     error.value = ''
     try {
@@ -82,7 +82,7 @@ export const useBudgetStore = defineStore('budget', () => {
     }
   }
 
-  const addCategory = async (payload: Omit<BudgetCategory, 'id' | 'household_id' | 'is_custom'>) => {
+  const addCategory = async (payload: Omit<CategoryInput, 'householdId'>) => {
     if (!householdId.value) throw new Error('Household aktif belum tersedia.')
     let created: BudgetCategory | undefined
     await runMutation(async () => {

@@ -25,7 +25,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-white backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
     <div class="h-16 md:h-20 w-full px-4 md:px-margin-desktop flex items-center justify-between">
       <div class="flex items-center gap-space-md md:gap-space-xl">
         <button @click="isMobileNavOpen = !isMobileNavOpen" class="lg:hidden p-2 text-on-surface-variant">
@@ -41,10 +41,10 @@ onMounted(() => {
         </div>
 
         <nav class="hidden lg:flex items-center gap-space-xs">
-          <RouterLink to="/" active-class="bg-primary-container text-on-primary-container font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Dashboard</RouterLink>
-          <RouterLink to="/anggaran" active-class="bg-primary-container text-on-primary-container font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggaran</RouterLink>
-          <RouterLink to="/hak-akses" active-class="bg-primary-container text-on-primary-container font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggota</RouterLink>
-          <RouterLink to="/backup-restore" active-class="bg-primary-container text-on-primary-container font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Backup</RouterLink>
+          <RouterLink to="/" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Dashboard</RouterLink>
+          <RouterLink to="/anggaran" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggaran</RouterLink>
+          <RouterLink to="/hak-akses" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggota</RouterLink>
+          <RouterLink to="/backup-restore" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Backup</RouterLink>
         </nav>
       </div>
 
@@ -54,7 +54,7 @@ onMounted(() => {
           <span class="hidden md:inline">+ Catat Transaksi</span>
           <span class="md:hidden">Catat</span>
         </button>
-        
+
         <div class="relative">
           <div @click="isProfileOpen = !isProfileOpen" class="flex items-center gap-space-xs cursor-pointer p-1 rounded-full hover:bg-surface-container">
             <img alt="Profile" class="w-8 h-8 rounded-full object-cover shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4bhRnYrM8EG8HnBmxvIXBoSzFzJbEcveSzqUy5MdhLMrA-zbUaw1iaxMqOCSuXePpWirv5oNxntwqXm_CSFki69W89wA2rZV5QL1Cs0Z9Zy3QHXsdMLcp9UMKFj7IADd4GgFzKq1C9OvX2R6F5HNgxfPQSoFwq9KCzDb1c8NL4CoNb9_wauMuTq46wjruSmD4kS7ljmpLdkVmm_R2NjpBV-WlBeWSBLkRxmTpZ4ci51JiTEXYo8e0Cg">
