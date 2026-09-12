@@ -8,10 +8,13 @@ export const useAuthStore = defineStore('auth', () => {
   const household = ref<any | null>(null)
   const currentMember = ref<any | null>(null)
   const loading = ref(false)
+  const initialized = ref(false)
 
   const initAuth = async () => {
+    if (initialized.value) return
     loading.value = true
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) console.error('Error restoring auth session:', sessionError)
     user.value = session?.user || null
     if (user.value) {
       await fetchHouseholdAndMember()
@@ -24,12 +27,17 @@ export const useAuthStore = defineStore('auth', () => {
         household.value = null
         currentMember.value = null
       }
+      initialized.value = true
+      loading.value = false
     })
+    initialized.value = true
     loading.value = false
   }
 
   const fetchHouseholdAndMember = async () => {
     if (!user.value) return
+    household.value = null
+    currentMember.value = null
     try {
       const { data: memberData, error: memberError } = await supabase
         .from('members')
@@ -93,6 +101,7 @@ export const useAuthStore = defineStore('auth', () => {
     household,
     currentMember,
     loading,
+    initialized,
     initAuth,
     login,
     registerAdmin,

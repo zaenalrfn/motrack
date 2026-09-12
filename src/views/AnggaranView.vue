@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import MainLayout from '../components/layout/MainLayout.vue'
+import { useBudgetStore } from '../stores/useBudgetStore'
+import { useAuthStore } from '../stores/useAuthStore'
 import AnggaranSummaryCards from '../components/anggaran/AnggaranSummaryCards.vue'
 import CategoryBudgetList from '../components/anggaran/CategoryBudgetList.vue'
 import GranularVisibilityMatrix from '../components/anggaran/GranularVisibilityMatrix.vue'
 
 const showBulkModal = ref(false)
+const budgetStore = useBudgetStore()
+const authStore = useAuthStore()
 
 const triggerAddBudget = () => {
   document.dispatchEvent(new CustomEvent('open-add-budget'))
@@ -18,6 +22,15 @@ const openBulkModal = () => {
 const closeBulkModal = () => {
   showBulkModal.value = false
 }
+
+onMounted(async () => {
+  if (!authStore.initialized) await authStore.initAuth()
+  if (budgetStore.householdId) await budgetStore.loadBudgetData()
+})
+
+watch(() => budgetStore.householdId, (householdId) => {
+  if (householdId && authStore.initialized) budgetStore.loadBudgetData()
+})
 
 const applyBulkGrant = () => {
   // Logic to apply bulk grant
@@ -38,7 +51,7 @@ const applyBulkGrant = () => {
               <span class="material-symbols-outlined text-[15px] fill-1">verified_user</span> Hak Admin Aktif
             </span>
           </div>
-          <h1 class="text-[24px] sm:text-[28px] lg:text-headline-lg lg:text-[32px] text-on-surface tracking-tight font-bold leading-tight">Pengaturan Anggaran September 2026</h1>
+          <h1 class="text-[24px] sm:text-[28px] lg:text-headline-lg lg:text-[32px] text-on-surface tracking-tight font-bold leading-tight">Pengaturan Anggaran {{ new Date(`${budgetStore.selectedMonth}-01`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) }}</h1>
           <p class="text-sm sm:text-body-md text-on-surface-variant max-w-2xl">
             <strong>Wadah (Kategori)</strong> untuk mencatat transaksi, <strong>Isi (Pagu)</strong> untuk batas maksimal bulanan.
           </p>

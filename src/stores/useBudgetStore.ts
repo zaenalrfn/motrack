@@ -1,93 +1,165 @@
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { useAuthStore } from './useAuthStore'
+import {
+  createBudget,
+  createCategory,
+  deleteBudget,
+  deleteCategory,
+  getBudgets,
+  getCategories,
+  getSpentByCategory,
+  updateBudget,
+  updateCategory,
+  type BudgetCategory,
 
-export interface BudgetCategory {
-  id: string
-  name: string
-  description: string
-  type: 'expense' | 'income'
-  icon: string
-  iconBg: string
-  iconColor: string
-  isCustom: boolean
-}
+  type CategoryBudget,
+  type CategoryInput,
+} from '../services/budgetService'
 
-export interface CategoryBudget {
-  id: string
-  categoryId: string
-  month: string
-  amount: number
-  spent: number
-}
-
-const uid = () => 'id_' + Math.random().toString(36).substring(2, 9)
+export type { BudgetCategory, CategoryBudget }
 
 export const useBudgetStore = defineStore('budget', () => {
-  const categories = ref<BudgetCategory[]>([
-    { id: 'c-makanan', name: 'Makanan & Groceries', description: 'Sembako & Konsumsi Harian', type: 'expense', icon: 'shopping_cart', iconBg: 'bg-primary-fixed', iconColor: 'text-primary', isCustom: false },
-    { id: 'c-transport', name: 'Transportasi & Bensin', description: 'BBM, Tol, & Parkir', type: 'expense', icon: 'local_gas_station', iconBg: 'bg-surface-container', iconColor: 'text-secondary', isCustom: false },
-    { id: 'c-tagihan', name: 'Tagihan & Listrik', description: 'PLN, PDAM, & WiFi Rumah', type: 'expense', icon: 'bolt', iconBg: 'bg-error-container', iconColor: 'text-error', isCustom: false },
-    { id: 'c-pendidikan', name: 'Pendidikan Anak', description: 'SPP & Perlengkapan Belajar', type: 'expense', icon: 'school', iconBg: 'bg-secondary-fixed', iconColor: 'text-secondary', isCustom: false },
-    { id: 'c-hiburan', name: 'Hiburan & Rekreasi', description: 'Wisata Akhir Pekan & Kuliner', type: 'expense', icon: 'movie', iconBg: 'bg-surface-container', iconColor: 'text-tertiary', isCustom: false },
-  ])
+  const authStore = useAuthStore()
+  const categories = ref<BudgetCategory[]>([])
+  const budgets = ref<CategoryBudget[]>([])
+  const selectedMonth = ref(new Date().toISOString().slice(0, 7))
+  const loading = ref(false)
+  const saving = ref(false)
+  const error = ref('')
 
-  const budgets = ref<CategoryBudget[]>([
-    { id: uid(), categoryId: 'c-makanan', month: '2026-09', amount: 6000000, spent: 5200000 },
-    { id: uid(), categoryId: 'c-transport', month: '2026-09', amount: 2500000, spent: 1850000 },
-    { id: uid(), categoryId: 'c-tagihan', month: '2026-09', amount: 2000000, spent: 2100000 },
-    { id: uid(), categoryId: 'c-pendidikan', month: '2026-09', amount: 4000000, spent: 2000000 },
-    { id: uid(), categoryId: 'c-hiburan', month: '2026-09', amount: 2500000, spent: 1650000 },
-  ])
+  const householdId = computed(() => authStore.household?.id as string | undefined)
 
-  const addCategory = (payload: Omit<BudgetCategory, 'id' | 'isCustom'>) => {
-    const cat: BudgetCategory = { ...payload, id: uid(), isCustom: true }
-    categories.value.push(cat)
-    return cat
+  const loadBudgetData = async (month = selectedMonth.value) => {
+    selectedMonth.value = month
+    if (!householdId.value) {
+      categories.value = []
+      budgets.value = []
+      return
+    }
+
+    loading.value = true
+    error.value = ''
+    try {
+      const [loadedCategories, loadedBudgets, spentByCategory] = await Promise.all([
+        getCategories(householdId.value),
+        getBudgets(householdId.value, month),
+        getSpentByCategory(householdId.value, month),
+      ])
+
+      categories.value = loadedCategories
+      budgets.value = loadedBudgets.map((budget) => ({
+        ...budget,
+        spent: spentByCategory[budget.category_id] ?? 0,
+      }))
+    } catch (caught) {
+      const details = caught as { message?: string }
+      error.value = details.message ?? 'Gagal memuat data anggaran.'
+    } finally {
+      loading.value = false
+    }
   }
 
-  const updateCategory = (id: string, payload: Partial<BudgetCategory>) => {
-    const idx = categories.value.findIndex(c => c.id === id)
-    if (idx !== -1) categories.value[idx] = { ...categories.value[idx], ...payload }
+  const runMutation = async (operation: () => Promise<void>) => {
+    saving.value = true
+    error.value = ''
+    try {
+      await operation()
+      try {
+        await loadBudgetData(selectedMonth.value)
+      } catch (refreshError) {
+        const details = refreshError as { message?: string }
+        error.value = details.message ?? 'Data tersimpan, tetapi gagal menyegarkan tampilan.'
+      }
+    } catch (caught) {
+      const details = caught as { code?: string; message?: string; hint?: string; details?: string }
+      error.value = [details.code, details.message, details.details, details.hint]
+        .filter(Boolean)
+        .join(' — ') || 'Gagal menyimpan perubahan anggaran.'
+      throw caught
+    } finally {
+      saving.value = false
+    }
   }
 
-  const deleteCategory = (id: string) => {
-    const used = budgets.value.some(b => b.categoryId === id)
-    if (used) return false
-    categories.value = categories.value.filter(c => c.id !== id)
+  const addCategory = async (payload: Omit<BudgetCategory, 'id' | 'household_id' | 'is_custom'>) => {
+    if (!householdId.value) throw new Error('Household aktif belum tersedia.')
+    let created: BudgetCategory | undefined
+    await runMutation(async () => {
+      created = await createCategory({
+        householdId: householdId.value as string,
+        name: payload.name,
+        description: payload.description ?? '',
+        type: payload.type,
+        icon: payload.icon ?? 'category',
+      })
+    })
+    return created
+  }
+
+  const editCategory = async (id: string, payload: Omit<CategoryInput, 'householdId'>) => {
+    await runMutation(() => updateCategory(id, payload))
+  }
+
+  const removeCategory = async (id: string) => {
+    if (budgets.value.some((budget) => budget.category_id === id)) return false
+    await runMutation(() => deleteCategory(id))
     return true
   }
 
-  const addBudget = (categoryId: string, month: string, amount: number) => {
-    const existing = budgets.value.find(b => b.categoryId === categoryId && b.month === month)
-    if (existing) {
-      existing.amount = amount
-      return existing
+  const addBudget = async (categoryId: string, month: string, amount: number) => {
+    await runMutation(() => createBudget({ categoryId, month, amount }))
+  }
+
+  const editBudget = async (id: string, amount: number) => {
+    await runMutation(() => updateBudget(id, amount))
+  }
+
+  const removeBudget = async (id: string) => {
+    await runMutation(() => deleteBudget(id))
+  }
+
+  const enriched = computed(() => categories.value.map((category) => {
+    const budget = budgets.value.find((item) => item.category_id === category.id)
+    const amount = budget?.amount ?? 0
+    const spent = budget?.spent ?? 0
+    const percent = amount > 0 ? Math.round((spent / amount) * 100) : 0
+
+    return {
+      id: budget?.id ?? `category-${category.id}`,
+      categoryId: category.id,
+      category,
+      categoryBudget: budget,
+      month: selectedMonth.value,
+      amount,
+      spent,
+      percent,
+      remaining: amount - spent,
     }
-    const b: CategoryBudget = { id: uid(), categoryId, month, amount, spent: 0 }
-    budgets.value.push(b)
-    return b
-  }
+  }))
 
-  const updateBudget = (id: string, amount: number) => {
-    const b = budgets.value.find(x => x.id === id)
-    if (b) b.amount = amount
-  }
-
-  const deleteBudget = (id: string) => {
-    budgets.value = budgets.value.filter(b => b.id !== id)
-  }
-
-  const enriched = computed(() => {
-    return budgets.value.map(b => {
-      const cat = categories.value.find(c => c.id === b.categoryId)
-      const pct = b.amount > 0 ? Math.round((b.spent / b.amount) * 100) : 0
-      return { ...b, category: cat, percent: pct, remaining: b.amount - b.spent }
-    })
-  })
-
-  const totalBudget = computed(() => budgets.value.reduce((s, b) => s + b.amount, 0))
-  const totalSpent = computed(() => budgets.value.reduce((s, b) => s + b.spent, 0))
+  const totalBudget = computed(() => budgets.value.reduce((sum, budget) => sum + budget.amount, 0))
+  const totalSpent = computed(() => budgets.value.reduce((sum, budget) => sum + budget.spent, 0))
   const totalRemaining = computed(() => totalBudget.value - totalSpent.value)
 
-  return { categories, budgets, enriched, totalBudget, totalSpent, totalRemaining, addCategory, updateCategory, deleteCategory, addBudget, updateBudget, deleteBudget }
+  return {
+    categories,
+    budgets,
+    householdId,
+    enriched,
+    selectedMonth,
+    loading,
+    saving,
+    error,
+    loadBudgetData,
+    addCategory,
+    editCategory,
+    removeCategory,
+    addBudget,
+    editBudget,
+    removeBudget,
+    totalBudget,
+    totalSpent,
+    totalRemaining,
+  }
 })

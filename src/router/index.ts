@@ -5,6 +5,7 @@ import HakAksesView from '../views/HakAksesView.vue'
 import BackupRestoreView from '../views/BackupRestoreView.vue'
 import WelcomeView from '../views/WelcomeView.vue'
 import LoginView from '../views/LoginView.vue'
+import AuthCallbackView from '../views/AuthCallbackView.vue'
 import { supabase } from '../services/supabaseClient'
 
 const router = createRouter({
@@ -43,6 +44,11 @@ const router = createRouter({
       path: '/auth/welcome',
       name: 'welcome',
       component: WelcomeView
+    },
+    {
+      path: '/auth/callback',
+      name: 'auth-callback',
+      component: AuthCallbackView
     }
   ]
 })
