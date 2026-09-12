@@ -18,10 +18,13 @@ export const usePermissionStore = defineStore('permission', () => {
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
+  const CACHE_TTL_MS = 60_000
+  let lastLoadedAt = 0
+  let loadingRequest: Promise<void> | null = null
 
   const householdId = computed(() => authStore.household?.id as string | undefined)
 
-  const loadMatrix = async () => {
+  const loadMatrix = async (force = false) => {
     if (!householdId.value) {
       members.value = []
       categories.value = []
@@ -29,23 +32,33 @@ export const usePermissionStore = defineStore('permission', () => {
       return
     }
 
+    const isFresh = lastLoadedAt > 0 && Date.now() - lastLoadedAt < CACHE_TTL_MS && members.value.length > 0
+    if (!force && isFresh) return
+    if (loadingRequest) return loadingRequest
+
     loading.value = true
     error.value = ''
-    try {
-      const [loadedMembers, loadedCategories, loadedGrants] = await Promise.all([
-        getActiveMembers(householdId.value),
-        getCategories(householdId.value),
-        getCategoryGrants(householdId.value),
-      ])
+    const currentHouseholdId = householdId.value
+    loadingRequest = Promise.all([
+        getActiveMembers(currentHouseholdId),
+      getCategories(currentHouseholdId),
+      getCategoryGrants(currentHouseholdId),
+    ]).then(([loadedMembers, loadedCategories, loadedGrants]) => {
+      if (householdId.value !== currentHouseholdId) return
       members.value = loadedMembers
       categories.value = loadedCategories
       grants.value = loadedGrants
-    } catch (caught) {
+      lastLoadedAt = Date.now()
+    }).catch((caught) => {
       const details = caught as { code?: string; message?: string; hint?: string }
       error.value = [details.code, details.message, details.hint].filter(Boolean).join(' — ') || 'Gagal memuat matriks hak akses.'
-    } finally {
+      throw caught
+    }).finally(() => {
       loading.value = false
-    }
+      loadingRequest = null
+    })
+
+    return loadingRequest
   }
 
   const hasAccess = (memberId: string, categoryId: string) => {
@@ -62,9 +75,11 @@ export const usePermissionStore = defineStore('permission', () => {
       if (nextValue) {
         const grant = await grantCategoryAccess(memberId, categoryId)
         grants.value.push(grant)
+        lastLoadedAt = Date.now()
       } else {
         await revokeCategoryAccess(memberId, categoryId)
         grants.value = grants.value.filter((grant) => !(grant.member_id === memberId && grant.category_id === categoryId))
+        lastLoadedAt = Date.now()
       }
     } catch (caught) {
       const details = caught as { code?: string; message?: string; hint?: string }

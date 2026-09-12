@@ -27,37 +27,51 @@ export const useBudgetStore = defineStore('budget', () => {
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
+  const CACHE_TTL_MS = 60_000
+  let lastLoadedAt = 0
+  let loadingRequest: Promise<void> | null = null
 
   const householdId = computed(() => authStore.household?.id as string | undefined)
 
-  const loadBudgetData = async (month = selectedMonth.value) => {
+  const loadBudgetData = async (month = selectedMonth.value, force = false) => {
+    const monthChanged = selectedMonth.value !== month
     selectedMonth.value = month
     if (!householdId.value) {
       categories.value = []
       budgets.value = []
+      lastLoadedAt = 0
       return
     }
 
+    const isFresh = !monthChanged && lastLoadedAt > 0 && Date.now() - lastLoadedAt < CACHE_TTL_MS && categories.value.length > 0
+    if (!force && isFresh) return
+    if (loadingRequest) return loadingRequest
+
     loading.value = true
     error.value = ''
-    try {
-      const [loadedCategories, loadedBudgets, spentByCategory] = await Promise.all([
-        getCategories(householdId.value),
-        getBudgets(householdId.value, month),
-        getSpentByCategory(householdId.value, month),
-      ])
-
+    const currentHouseholdId = householdId.value
+    loadingRequest = Promise.all([
+      getCategories(currentHouseholdId),
+      getBudgets(currentHouseholdId, month),
+      getSpentByCategory(currentHouseholdId, month),
+    ]).then(([loadedCategories, loadedBudgets, spentByCategory]) => {
+      if (householdId.value !== currentHouseholdId) return
       categories.value = loadedCategories
       budgets.value = loadedBudgets.map((budget) => ({
         ...budget,
         spent: spentByCategory[budget.category_id] ?? 0,
       }))
-    } catch (caught) {
+      lastLoadedAt = Date.now()
+    }).catch((caught) => {
       const details = caught as { message?: string }
       error.value = details.message ?? 'Gagal memuat data anggaran.'
-    } finally {
+      throw caught
+    }).finally(() => {
       loading.value = false
-    }
+      loadingRequest = null
+    })
+
+    return loadingRequest
   }
 
   const runMutation = async (operation: () => Promise<unknown>) => {
@@ -66,7 +80,7 @@ export const useBudgetStore = defineStore('budget', () => {
     try {
       await operation()
       try {
-        await loadBudgetData(selectedMonth.value)
+        await loadBudgetData(selectedMonth.value, true)
       } catch (refreshError) {
         const details = refreshError as { message?: string }
         error.value = details.message ?? 'Data tersimpan, tetapi gagal menyegarkan tampilan.'

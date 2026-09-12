@@ -2,9 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import AddMemberModal from './AddMemberModal.vue'
 import { useAuthStore } from '../../stores/useAuthStore'
-import { getActiveMembers, type ActiveMember } from '../../services/memberService'
+import { getActiveMembers, invalidateActiveMembersCache, type ActiveMember } from '../../services/memberService'
 
 const MAX_MEMBERS = 6
+const emit = defineEmits<{ (event: 'member-added'): void }>()
 const authStore = useAuthStore()
 const members = ref<ActiveMember[]>([])
 const loading = ref(false)
@@ -65,7 +66,14 @@ const resetLink = () => {
   link.value = `${baseUrl}/join/household-${Math.random().toString(36).substring(2, 8)}`
 }
 
-defineExpose({ copyLink, resetLink, loadMembers })
+const refreshMembers = async (force = false) => {
+  const householdId = authStore.household?.id
+  if (!householdId) return loadMembers()
+  if (force) invalidateActiveMembersCache(householdId)
+  members.value = await getActiveMembers(householdId, force)
+}
+
+defineExpose({ copyLink, resetLink, loadMembers, refreshMembers })
 onMounted(loadMembers)
 watch(() => authStore.household?.id, loadMembers)
 </script>
@@ -106,7 +114,7 @@ watch(() => authStore.household?.id, loadMembers)
           <div v-if="extraMembers" class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-semibold border border-dashed border-outline/50">+{{ extraMembers }}</div>
           <div v-if="!members.length && !loading" class="w-10 h-10 rounded-full bg-surface-container text-on-surface-variant flex items-center justify-center font-semibold">—</div>
         </div>
-        <AddMemberModal />
+        <AddMemberModal @member-added="emit('member-added')" />
       </div>
     </div>
   </div>

@@ -40,7 +40,10 @@ const handleClaim = async () => {
   errorMessage.value = ''
 
   try {
-    const { error: updateError } = await supabase.auth.updateUser({ password: password.value })
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password.value,
+      data: { password_setup_completed: true },
+    })
     if (updateError) throw updateError
 
     await authStore.fetchHouseholdAndMember()

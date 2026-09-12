@@ -1,2 +1,5 @@
 [functions.create-member-magic-link]
 verify_jwt = true
+
+[functions.regenerate-member-magic-link]
+verify_jwt = true
