@@ -28,7 +28,7 @@ onMounted(async () => {
   }
 
   await authStore.fetchHouseholdAndMember()
-  await router.replace('/')
+  await router.replace('/auth/welcome')
 })
 </script>
 

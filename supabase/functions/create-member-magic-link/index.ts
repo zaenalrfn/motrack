@@ -64,15 +64,22 @@ Deno.serve(async (request) => {
 
   const { data: adminMember, error: adminMemberError } = await adminClient
     .from('members')
-    .select('id')
-    .eq('household_id', payload.householdId)
+    .select('id, household_id')
     .eq('user_id', callerData.user.id)
     .eq('role', 'admin')
     .eq('status', 'active')
     .maybeSingle()
 
   if (adminMemberError) return json({ error: adminMemberError.message }, 500)
-  if (!adminMember) return json({ error: 'Only an active household admin can create members' }, 403)
+  if (!adminMember) {
+    return json({ error: 'Only an active household admin can create members' }, 403)
+  }
+
+  if (adminMember.household_id !== payload.householdId) {
+    return json({ error: 'Household aktif tidak sesuai dengan sesi admin.' }, 403)
+  }
+
+  const householdId = adminMember.household_id
 
   const { data: existingUserData, error: existingUserError } =
     await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
@@ -96,7 +103,7 @@ Deno.serve(async (request) => {
   }
 
   const { data: member, error: memberError } = await callerClient.rpc('create_member_account_record', {
-    p_household_id: payload.householdId,
+    p_household_id: householdId,
     p_user_id: userId,
     p_name: name,
     p_role: payload.role,
@@ -110,7 +117,7 @@ Deno.serve(async (request) => {
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { redirectTo: `${appUrl.replace(/\/$/, '')}/auth/callback` },
+    options: { redirectTo: `${appUrl.replace(/\/$/, '')}/auth/welcome` },
   })
 
   if (linkError || !linkData.properties?.action_link) {

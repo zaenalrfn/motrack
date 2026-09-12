@@ -1,11 +1,41 @@
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue';
+import { computed, ref, onMounted, inject } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 const openTransactionModal = inject('openTransactionModal') as () => void;
+const router = useRouter();
+const authStore = useAuthStore();
 
 const isProfileOpen = ref(false);
 const isMobileNavOpen = ref(false);
 const isDarkMode = ref(false);
+const isLoggingOut = ref(false);
+const logoutError = ref('');
+
+const profileName = computed(() => authStore.currentMember?.name || authStore.user?.user_metadata?.name || authStore.user?.email?.split('@')[0] || 'Pengguna');
+const profileEmail = computed(() => authStore.user?.email || 'Email belum tersedia');
+const profileRole = computed(() => authStore.currentMember?.role === 'admin' ? 'Admin Household' : authStore.currentMember?.role === 'member' ? 'Member Household' : 'Memuat profil...');
+const profileHousehold = computed(() => authStore.household?.name || 'Household belum tersedia');
+const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpperCase() || '?');
+const profileRoleClass = computed(() => authStore.currentMember?.role === 'admin' ? 'bg-primary-fixed text-on-primary-fixed-variant' : 'bg-secondary-fixed text-on-secondary-fixed-variant');
+
+const handleLogout = async () => {
+  if (isLoggingOut.value) return;
+
+  isLoggingOut.value = true;
+  logoutError.value = '';
+  try {
+    await authStore.logout();
+    isProfileOpen.value = false;
+    isMobileNavOpen.value = false;
+    await router.replace('/login');
+  } catch (error) {
+    logoutError.value = error instanceof Error ? error.message : 'Gagal keluar dari akun.';
+  } finally {
+    isLoggingOut.value = false;
+  }
+};
 
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value;
@@ -57,22 +87,31 @@ onMounted(() => {
 
         <div class="relative">
           <div @click="isProfileOpen = !isProfileOpen" class="flex items-center gap-space-xs cursor-pointer p-1 rounded-full hover:bg-surface-container">
-            <img alt="Profile" class="w-8 h-8 rounded-full object-cover shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4bhRnYrM8EG8HnBmxvIXBoSzFzJbEcveSzqUy5MdhLMrA-zbUaw1iaxMqOCSuXePpWirv5oNxntwqXm_CSFki69W89wA2rZV5QL1Cs0Z9Zy3QHXsdMLcp9UMKFj7IADd4GgFzKq1C9OvX2R6F5HNgxfPQSoFwq9KCzDb1c8NL4CoNb9_wauMuTq46wjruSmD4kS7ljmpLdkVmm_R2NjpBV-WlBeWSBLkRxmTpZ4ci51JiTEXYo8e0Cg">
+            <div class="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-semibold text-sm shadow-sm" :title="profileName">{{ profileInitial }}</div>
           </div>
 
           <div v-if="isProfileOpen" class="absolute right-0 mt-2 w-64 bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-container p-space-sm z-50">
             <div class="px-space-sm py-space-xs border-b border-surface-container mb-space-xs">
-              <p class="font-label-lg">Rina</p>
-              <p class="font-body-sm text-on-surface-variant">Ibu Rumah Tangga</p>
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="font-label-lg text-on-surface truncate">{{ profileName }}</p>
+                  <p class="font-body-sm text-on-surface-variant truncate">{{ profileEmail }}</p>
+                </div>
+                <span :class="['px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap', profileRoleClass]">{{ profileRole }}</span>
+              </div>
+              <p class="font-body-sm text-on-surface-variant mt-2 truncate">
+                <span class="material-symbols-outlined align-middle text-[15px] mr-1">family_restroom</span>{{ profileHousehold }}
+              </p>
             </div>
             <button @click="toggleDarkMode" class="w-full flex items-center justify-between px-space-sm py-space-xs hover:bg-surface-container rounded-lg">
               <span class="font-label-md">Mode Gelap</span>
               <span class="material-symbols-outlined text-[18px]">{{ isDarkMode ? 'toggle_on' : 'toggle_off' }}</span>
             </button>
-            <RouterLink to="/login" class="w-full flex items-center px-space-sm py-space-xs hover:bg-surface-container rounded-lg text-error">
-              <span class="material-symbols-outlined text-[18px] mr-2">logout</span>
-              <span class="font-label-md">Logout</span>
-            </RouterLink>
+            <p v-if="logoutError" class="px-space-sm py-1 text-xs text-error">{{ logoutError }}</p>
+            <button @click="handleLogout" :disabled="isLoggingOut" class="w-full flex items-center px-space-sm py-space-xs hover:bg-surface-container rounded-lg text-error disabled:opacity-50 disabled:cursor-not-allowed">
+              <span class="material-symbols-outlined text-[18px] mr-2" :class="isLoggingOut ? 'animate-spin' : ''">{{ isLoggingOut ? 'refresh' : 'logout' }}</span>
+              <span class="font-label-md">{{ isLoggingOut ? 'Keluar...' : 'Logout' }}</span>
+            </button>
           </div>
         </div>
       </div>
