@@ -22,6 +22,31 @@ export const useTransactionStore = defineStore('transaction', () => {
 
   const householdId = computed(() => authStore.household?.id as string | undefined)
   const memberId = computed(() => authStore.currentMember?.id as string | undefined)
+  let categoriesRequest: Promise<void> | null = null
+
+  const syncCategories = async () => {
+    if (!householdId.value) {
+      categories.value = []
+      return
+    }
+
+    if (categoriesRequest) return categoriesRequest
+
+    const currentHouseholdId = householdId.value
+    categoriesRequest = getCategories(currentHouseholdId)
+      .then((loadedCategories) => {
+        if (householdId.value === currentHouseholdId) {
+          categories.value = loadedCategories
+        }
+      })
+      .finally(() => {
+        categoriesRequest = null
+      })
+
+    return categoriesRequest
+  }
+
+  const refreshCategories = syncCategories
 
   const loadTransactions = async (nextFilters: TransactionFilters = filters.value) => {
     if (!householdId.value) return
@@ -29,12 +54,9 @@ export const useTransactionStore = defineStore('transaction', () => {
     loading.value = true
     error.value = ''
     try {
-      const [loadedTransactions, loadedCategories] = await Promise.all([
-        getTransactions(householdId.value, filters.value),
-        getCategories(householdId.value),
-      ])
+      const loadedTransactions = await getTransactions(householdId.value, filters.value)
       transactions.value = loadedTransactions
-      categories.value = loadedCategories
+      await syncCategories()
     } catch (caught) {
       const details = caught as { code?: string; message?: string; hint?: string }
       error.value = [details.code, details.message, details.hint].filter(Boolean).join(' — ') || 'Gagal memuat transaksi.'
@@ -101,6 +123,8 @@ export const useTransactionStore = defineStore('transaction', () => {
     error,
     householdId,
     memberId,
+    syncCategories,
+    refreshCategories,
     loadTransactions,
     addTransaction,
     removeTransaction,

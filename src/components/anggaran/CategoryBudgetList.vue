@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useBudgetStore } from '../../stores/useBudgetStore'
+import { useTransactionStore } from '../../stores/useTransactionStore'
 import CategoryModal from './CategoryModal.vue'
 import BudgetModal from './BudgetModal.vue'
 import ConfirmationModal from './ConfirmationModal.vue'
 import type { BudgetCategory } from '../../services/budgetService'
 
 const store = useBudgetStore()
+const transactionStore = useTransactionStore()
+
 const showCatModal = ref(false)
 const showBudgetModal = ref(false)
 const showBudgetEdit = ref(false)
@@ -46,8 +49,10 @@ const saveCategory = async (payload: { name: string; description: string; type: 
   try {
     if (editingCat.value) {
       await store.editCategory(editingCat.value.id, payload)
+      await transactionStore.refreshCategories()
     } else {
       await store.addCategory(payload)
+      await transactionStore.refreshCategories()
       showCatModal.value = false
       openAddBudget()
       return
@@ -116,8 +121,8 @@ const requestDeleteCategory = (category: BudgetCategory) => {
   showConfirmation.value = true
 }
 
-const closeConfirmation = () => {
-  if (confirmationLoading.value) return
+const closeConfirmation = (force = false) => {
+  if (confirmationLoading.value && !force) return
   showConfirmation.value = false
   confirmationType.value = null
   selectedCategory.value = null
@@ -143,7 +148,7 @@ const confirmDeletion = async () => {
       }
     }
 
-    closeConfirmation()
+    closeConfirmation(true)
   } catch (error) {
     confirmationError.value = error instanceof Error ? error.message : 'Gagal menghapus data.'
   } finally {

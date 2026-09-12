@@ -21,12 +21,20 @@ watch(() => [props.isOpen, type.value, categories.value.length], ([open]) => {
   if (open && !categories.value.some((category) => category.id === categoryId.value)) categoryId.value = categories.value[0]?.id ?? ''
 })
 
-watch(() => props.isOpen, (open) => {
-  if (open) {
-    formError.value = ''
-    date.value = new Date().toISOString().split('T')[0]
-    if (!store.categories.length) store.loadTransactions(store.filters)
+const prepareModal = async () => {
+  formError.value = ''
+  date.value = new Date().toISOString().split('T')[0]
+  categoryId.value = ''
+
+  try {
+    await store.refreshCategories()
+  } catch (error) {
+    formError.value = error instanceof Error ? error.message : 'Gagal memuat kategori terbaru.'
   }
+}
+
+watch(() => props.isOpen, (open) => {
+  if (open) void prepareModal()
 })
 
 const handleSave = async () => {
