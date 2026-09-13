@@ -19,6 +19,8 @@ const profileRole = computed(() => authStore.currentMember?.role === 'admin' ? '
 const profileHousehold = computed(() => authStore.household?.name || 'Household belum tersedia');
 const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpperCase() || '?');
 const profileRoleClass = computed(() => authStore.currentMember?.role === 'admin' ? 'bg-primary-fixed text-on-primary-fixed-variant' : 'bg-secondary-fixed text-on-secondary-fixed-variant');
+const isAdmin = computed(() => authStore.currentMember?.role === 'admin');
+const catatLabel = computed(() => (isAdmin.value ? '+ Catat Transaksi' : '+ Catat Pengeluaran'));
 
 const handleLogout = async () => {
   if (isLoggingOut.value) return;
@@ -70,7 +72,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <nav class="hidden lg:flex items-center gap-space-xs">
+        <nav v-if="isAdmin" class="hidden lg:flex items-center gap-space-xs">
           <RouterLink to="/" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Dashboard</RouterLink>
           <RouterLink to="/anggaran" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggaran</RouterLink>
           <RouterLink to="/hak-akses" active-class="bg-primary-container text-white font-semibold" class="px-space-md py-space-xs rounded-full font-label-md whitespace-nowrap text-on-surface-variant hover:text-on-surface hover:bg-surface-container">Anggota</RouterLink>
@@ -81,7 +83,7 @@ onMounted(() => {
       <div class="flex items-center gap-space-xs md:gap-space-md">
         <button @click="openTransactionModal" class="flex items-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-md md:px-space-lg py-space-xs rounded-full font-label-lg whitespace-nowrap transition-transform active:scale-95 shadow-sm">
           <span class="material-symbols-outlined text-[18px]">add_circle</span>
-          <span class="hidden md:inline">+ Catat Transaksi</span>
+          <span class="hidden md:inline">{{ catatLabel }}</span>
           <span class="md:hidden">Catat</span>
         </button>
 
@@ -117,7 +119,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-if="isMobileNavOpen" class="lg:hidden bg-surface-container-lowest border-t border-surface-container p-space-md">
+    <div v-if="isMobileNavOpen && isAdmin" class="lg:hidden bg-surface-container-lowest border-t border-surface-container p-space-md">
       <nav class="flex flex-col gap-space-xs">
         <RouterLink to="/" class="px-space-md py-space-sm rounded-lg hover:bg-surface-container">Dashboard & Transaksi</RouterLink>
         <RouterLink to="/anggaran" class="px-space-md py-space-sm rounded-lg hover:bg-surface-container">Anggaran & Hak Akses</RouterLink>

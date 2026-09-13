@@ -23,6 +23,7 @@ export const useBudgetStore = defineStore('budget', () => {
   const authStore = useAuthStore()
   const categories = ref<BudgetCategory[]>([])
   const budgets = ref<CategoryBudget[]>([])
+  const spentMap = ref<Record<string, number>>({})
   const selectedMonth = ref(new Date().toISOString().slice(0, 7))
   const loading = ref(false)
   const saving = ref(false)
@@ -39,13 +40,15 @@ export const useBudgetStore = defineStore('budget', () => {
     if (!householdId.value) {
       categories.value = []
       budgets.value = []
+      spentMap.value = {}
       lastLoadedAt = 0
       return
     }
 
-    const isFresh = !monthChanged && lastLoadedAt > 0 && Date.now() - lastLoadedAt < CACHE_TTL_MS && categories.value.length > 0
-    if (!force && isFresh) return
-    if (loadingRequest) return loadingRequest
+    const isFresh = !monthChanged && !force && lastLoadedAt > 0 && Date.now() - lastLoadedAt < CACHE_TTL_MS && categories.value.length > 0
+    if (isFresh) return
+    if (!force && loadingRequest) return loadingRequest
+    if (force) loadingRequest = null
 
     loading.value = true
     error.value = ''
@@ -57,6 +60,7 @@ export const useBudgetStore = defineStore('budget', () => {
     ]).then(([loadedCategories, loadedBudgets, spentByCategory]) => {
       if (householdId.value !== currentHouseholdId) return
       categories.value = loadedCategories
+      spentMap.value = spentByCategory
       budgets.value = loadedBudgets.map((budget) => ({
         ...budget,
         spent: spentByCategory[budget.category_id] ?? 0,
@@ -136,7 +140,7 @@ export const useBudgetStore = defineStore('budget', () => {
   const enriched = computed(() => categories.value.map((category) => {
     const budget = budgets.value.find((item) => item.category_id === category.id)
     const amount = budget?.amount ?? 0
-    const spent = budget?.spent ?? 0
+    const spent = spentMap.value[category.id] ?? budget?.spent ?? 0
     const percent = amount > 0 ? Math.round((spent / amount) * 100) : 0
 
     return {
@@ -153,7 +157,7 @@ export const useBudgetStore = defineStore('budget', () => {
   }))
 
   const totalBudget = computed(() => budgets.value.reduce((sum, budget) => sum + budget.amount, 0))
-  const totalSpent = computed(() => budgets.value.reduce((sum, budget) => sum + budget.spent, 0))
+  const totalSpent = computed(() => Object.values(spentMap.value).reduce((sum, val) => sum + val, 0))
   const totalRemaining = computed(() => totalBudget.value - totalSpent.value)
 
   return {

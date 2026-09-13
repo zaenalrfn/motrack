@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './useAuthStore'
+import { useBudgetStore } from './useBudgetStore'
 import { getCategories, type BudgetCategory } from '../services/budgetService'
 import {
   createTransaction,
@@ -72,6 +73,8 @@ export const useTransactionStore = defineStore('transaction', () => {
     try {
       await createTransaction({ ...input, householdId: householdId.value, memberId: memberId.value })
       await loadTransactions(filters.value)
+      const budgetStore = useBudgetStore()
+      await budgetStore.loadBudgetData(budgetStore.selectedMonth, true)
     } catch (caught) {
       const details = caught as { code?: string; message?: string; hint?: string }
       error.value = [details.code, details.message, details.hint].filter(Boolean).join(' — ') || 'Gagal menyimpan transaksi.'
@@ -86,6 +89,8 @@ export const useTransactionStore = defineStore('transaction', () => {
     try {
       await deleteTransaction(id)
       await loadTransactions(filters.value)
+      const budgetStore = useBudgetStore()
+      await budgetStore.loadBudgetData(budgetStore.selectedMonth, true)
     } finally {
       saving.value = false
     }
