@@ -58,21 +58,35 @@ watch(() => store.householdId, (householdId) => {
       <div v-else-if="!store.members.length" class="rounded-2xl bg-surface-container-low p-space-xl text-center text-on-surface-variant">Belum ada anggota aktif.</div>
       <div v-else-if="!store.categories.length" class="rounded-2xl bg-surface-container-low p-space-xl text-center text-on-surface-variant">Belum ada kategori. Buat kategori terlebih dahulu.</div>
       <template v-else>
-        <div class="md:hidden flex flex-col gap-4">
-          <div v-for="(member, index) in memberRows" :key="member.id" class="bg-surface-container-low p-4 rounded-2xl border border-surface-container space-y-3">
-            <div class="flex items-center gap-3">
-              <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold', avatarClass(index)]">{{ initials(member.name) }}</div>
+        <div class="md:hidden flex flex-col gap-3">
+          <div v-for="(member, index) in memberRows" :key="member.id" class="bg-surface-container-low p-3 rounded-xl border border-surface-container space-y-2.5">
+            <div class="flex items-center gap-2.5">
+              <div :class="['w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0', avatarClass(index)]">{{ initials(member.name) }}</div>
               <div class="flex flex-col min-w-0">
-                <span class="font-title-md text-on-surface font-semibold truncate">{{ member.name }}</span>
-                <span class="font-body-sm text-on-surface-variant">{{ member.role === 'admin' ? 'Admin • Akses penuh' : 'Anggota' }}</span>
+                <span class="text-[13px] text-on-surface font-semibold truncate">{{ member.name }}</span>
+                <span class="text-[11px] text-on-surface-variant">{{ member.role === 'admin' ? 'Admin • Akses penuh' : 'Anggota' }}</span>
               </div>
             </div>
-            <div v-if="member.role === 'admin'" class="rounded-xl bg-primary-fixed/60 text-on-primary-fixed-variant px-3 py-2 text-sm">Akses penuh ke semua kategori</div>
-            <div v-else class="grid grid-cols-2 gap-2 text-xs">
-              <label v-for="category in store.categories" :key="category.id" class="flex items-center gap-2 text-on-surface">
-                <input type="checkbox" :checked="store.hasAccess(member.id, category.id)" :disabled="store.saving" @change="toggle(member.id, category.id)" class="w-4 h-4 rounded text-primary accent-primary cursor-pointer disabled:opacity-50" />
+            <div v-if="member.role === 'admin'" class="rounded-lg bg-secondary-container/55 border border-secondary/40 text-on-secondary-container px-2.5 py-1.5 text-[11px] font-semibold flex items-center justify-between gap-1.5"><span>Akses penuh ke semua kategori</span><span class="material-symbols-outlined text-[14px] shrink-0">check_circle</span></div>
+            <div v-else class="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                v-for="category in store.categories"
+                :key="category.id"
+                @click="toggle(member.id, category.id)"
+                :disabled="store.saving"
+                :class="[
+                  'w-full py-1.5 px-2.5 rounded-lg text-[11px] font-medium transition-all flex items-center justify-between gap-1.5 cursor-pointer disabled:opacity-50 border',
+                  store.hasAccess(member.id, category.id)
+                    ? 'bg-secondary-container/55 border-secondary/40 text-on-secondary-container font-semibold'
+                    : 'bg-surface-container text-on-surface-variant border-transparent'
+                ]"
+              >
                 <span class="truncate">{{ category.name }}</span>
-              </label>
+                <span class="material-symbols-outlined text-[14px] shrink-0">
+                  {{ store.hasAccess(member.id, category.id) ? 'check_circle' : 'radio_button_unchecked' }}
+                </span>
+              </button>
             </div>
             <div class="text-right pt-2 border-t border-surface-container/60">
               <span class="px-2 py-0.5 rounded-full font-label-sm text-[10px] font-semibold bg-secondary-fixed text-on-secondary-fixed-variant">{{ member.role === 'admin' ? store.categories.length : member.count }} Kategori Terbuka</span>
@@ -97,9 +111,24 @@ watch(() => store.householdId, (householdId) => {
                     <span class="font-medium truncate">{{ member.name }}</span>
                   </div>
                 </td>
-                <td v-for="category in store.categories" :key="category.id" class="text-center py-4">
-                  <span v-if="member.role === 'admin'" class="material-symbols-outlined text-secondary text-[20px]" title="Akses penuh">check_circle</span>
-                  <input v-else type="checkbox" :checked="store.hasAccess(member.id, category.id)" :disabled="store.saving" @change="toggle(member.id, category.id)" class="w-5 h-5 rounded text-primary cursor-pointer disabled:opacity-50" />
+                <td v-for="category in store.categories" :key="category.id" class="text-center py-3">
+                  <button
+                    type="button"
+                    @click="member.role === 'admin' ? null : toggle(member.id, category.id)"
+                    :disabled="member.role === 'admin' || store.saving"
+                    :title="member.role === 'admin' ? 'Admin selalu punya akses penuh' : (store.hasAccess(member.id, category.id) ? 'Klik untuk cabut akses' : 'Klik untuk beri akses')"
+                    :class="[
+                      'w-7 h-7 rounded-lg transition-all inline-flex items-center justify-center disabled:opacity-100 mx-auto border',
+                      member.role === 'admin' ? 'cursor-default' : 'cursor-pointer',
+                      store.hasAccess(member.id, category.id)
+                        ? 'bg-secondary text-on-secondary border-secondary hover:bg-secondary/90'
+                        : 'bg-surface-container-lowest text-on-surface-variant border-surface-container hover:border-secondary/50 hover:text-secondary'
+                    ]"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">
+                      {{ store.hasAccess(member.id, category.id) ? 'check' : 'remove' }}
+                    </span>
+                  </button>
                 </td>
                 <td class="text-right py-4 font-semibold text-xs">{{ member.role === 'admin' ? store.categories.length : member.count }} Aktif</td>
               </tr>
@@ -110,7 +139,7 @@ watch(() => store.householdId, (householdId) => {
 
       <div class="flex flex-col sm:flex-row items-center justify-between pt-space-md border-t border-surface-container text-on-surface-variant font-body-sm gap-space-sm">
         <div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-primary text-[18px]">info</span><span>Hak akses hanya berlaku untuk transaksi baru; histori transaksi tidak berubah.</span></div>
-        <button @click="emit('open-bulk')" class="font-label-md text-primary hover:text-primary-container font-semibold">Bulk Grant Izin</button>
+        <button @click="emit('open-bulk')" class="font-label-md text-primary hover:text-primary-container font-semibold">Berikan Akses Massal</button>
       </div>
     </div>
   </section>

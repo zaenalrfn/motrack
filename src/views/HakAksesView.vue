@@ -1,19 +1,52 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { supabase } from '../services/supabaseClient'
+import { useAuthStore } from '../stores/useAuthStore'
 import MainLayout from "../components/layout/MainLayout.vue";
 import HouseholdCapacityWidget from "../components/hak-akses/HouseholdCapacityWidget.vue";
 import SystemLogNotification from "../components/hak-akses/SystemLogNotification.vue";
 import ActiveMembersTable from "../components/hak-akses/ActiveMembersTable.vue";
 import InactiveMembersSection from "../components/hak-akses/InactiveMembersSection.vue";
 import { invalidateActiveMembersCache } from '../services/memberService'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
+const authStore = useAuthStore()
 const capacityWidget = ref<InstanceType<typeof HouseholdCapacityWidget> | null>(null)
 const membersTable = ref<InstanceType<typeof ActiveMembersTable> | null>(null)
+const inactiveSection = ref<InstanceType<typeof InactiveMembersSection> | null>(null)
+
+let channel: RealtimeChannel | null = null
+
 const refreshMemberData = () => {
-  invalidateActiveMembersCache()
+  invalidateActiveMembersCache(authStore.household?.id)
   void capacityWidget.value?.refreshMembers(true)
   void membersTable.value?.refresh()
+  void inactiveSection.value?.refresh()
 }
+
+const subscribeMembers = () => {
+  if (channel) supabase.removeChannel(channel)
+  const householdId = authStore.household?.id
+  if (!householdId) return
+  channel = supabase
+    .channel(`members-${householdId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'members', filter: `household_id=eq.${householdId}` }, () => {
+      refreshMemberData()
+    })
+    .subscribe()
+}
+
+onMounted(() => {
+  subscribeMembers()
+})
+
+watch(() => authStore.household?.id, () => {
+  subscribeMembers()
+})
+
+onUnmounted(() => {
+  if (channel) supabase.removeChannel(channel)
+})
 </script>
 
 <template>
@@ -49,7 +82,7 @@ const refreshMemberData = () => {
       <HouseholdCapacityWidget ref="capacityWidget" @member-added="refreshMemberData" />
       <SystemLogNotification />
       <ActiveMembersTable ref="membersTable" @member-deleted="refreshMemberData" />
-      <InactiveMembersSection />
+      <InactiveMembersSection ref="inactiveSection" @member-restored="refreshMemberData" />
     </div>
   </MainLayout>
 </template>

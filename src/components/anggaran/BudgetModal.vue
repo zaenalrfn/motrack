@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useBudgetStore } from '../../stores/useBudgetStore'
+import { formatRupiah, parseRupiah } from '../../utils/currency'
 
 const props = defineProps<{
   isOpen: boolean
@@ -17,7 +18,11 @@ const emit = defineEmits<{
 const store = useBudgetStore()
 const categoryId = ref('')
 const month = ref(store.selectedMonth)
-const amount = ref('')
+const displayAmount = ref('')
+
+watch(displayAmount, (newVal) => {
+  displayAmount.value = formatRupiah(newVal)
+})
 
 const unbudgeted = computed(() => store.categories.filter((category) =>
   !store.budgets.some((budget) => budget.category_id === category.id && budget.month === month.value),
@@ -27,12 +32,12 @@ watch(() => props.isOpen, (open) => {
   if (open) {
     categoryId.value = props.editing?.categoryId ?? unbudgeted.value[0]?.id ?? store.categories[0]?.id ?? ''
     month.value = props.editing?.month ?? store.selectedMonth
-    amount.value = props.editing ? String(props.editing.amount) : ''
+    displayAmount.value = props.editing ? formatRupiah(String(props.editing.amount)) : ''
   }
 })
 
 const handleSave = () => {
-  const numericAmount = Number(amount.value)
+  const numericAmount = parseRupiah(displayAmount.value)
   if (!categoryId.value || !month.value || numericAmount <= 0 || props.loading) return
 
   emit('save', {
@@ -78,7 +83,7 @@ const handleSave = () => {
           </div>
           <div>
             <label class="font-label-sm text-on-surface-variant uppercase font-semibold block mb-1">Nominal (Rp)</label>
-            <input v-model="amount" type="number" min="1000" required placeholder="2000000" :disabled="loading" class="w-full bg-surface-container-low px-4 py-3 rounded-2xl border border-surface-container text-sm font-bold disabled:opacity-60">
+            <input v-model="displayAmount" type="text" inputmode="numeric" required placeholder="2.000.000" :disabled="loading" class="w-full bg-surface-container-low px-4 py-3 rounded-2xl border border-surface-container text-sm font-bold disabled:opacity-60 tabular-nums">
           </div>
         </div>
         <div class="flex justify-end gap-3 pt-4 border-t border-surface-container">

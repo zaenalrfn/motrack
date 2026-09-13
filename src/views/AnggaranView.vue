@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import MainLayout from '../components/layout/MainLayout.vue'
 import { useBudgetStore } from '../stores/useBudgetStore'
 import { useAuthStore } from '../stores/useAuthStore'
+import { usePermissionStore } from '../stores/usePermissionStore'
 import AnggaranSummaryCards from '../components/anggaran/AnggaranSummaryCards.vue'
 import CategoryBudgetList from '../components/anggaran/CategoryBudgetList.vue'
 import GranularVisibilityMatrix from '../components/anggaran/GranularVisibilityMatrix.vue'
@@ -10,12 +11,20 @@ import GranularVisibilityMatrix from '../components/anggaran/GranularVisibilityM
 const showBulkModal = ref(false)
 const budgetStore = useBudgetStore()
 const authStore = useAuthStore()
+const permissionStore = usePermissionStore()
+
+const selectedMemberIds = ref<string[]>([])
+const selectedCategoryIds = ref<string[]>([])
+
+const nonAdminMembers = computed(() => permissionStore.members.filter(m => m.role !== 'admin'))
 
 const triggerAddBudget = () => {
   document.dispatchEvent(new CustomEvent('open-add-budget'))
 }
 
 const openBulkModal = () => {
+  selectedMemberIds.value = []
+  selectedCategoryIds.value = []
   showBulkModal.value = true
 }
 
@@ -25,18 +34,33 @@ const closeBulkModal = () => {
 
 onMounted(async () => {
   if (!authStore.initialized) await authStore.initAuth()
-  if (budgetStore.householdId) await budgetStore.loadBudgetData()
+  if (budgetStore.householdId) {
+    await Promise.all([
+      budgetStore.loadBudgetData(),
+      permissionStore.loadMatrix()
+    ])
+  }
 })
 
 watch(() => budgetStore.householdId, (householdId) => {
-  if (householdId && authStore.initialized) budgetStore.loadBudgetData()
+  if (householdId && authStore.initialized) {
+    budgetStore.loadBudgetData()
+    permissionStore.loadMatrix()
+  }
 })
 
-const applyBulkGrant = () => {
-  // Logic to apply bulk grant
-  setTimeout(() => {
+const applyBulkGrant = async () => {
+  if (selectedMemberIds.value.length === 0 || selectedCategoryIds.value.length === 0) {
+    alert('Pilih minimal satu anggota dan satu kategori.')
+    return
+  }
+
+  try {
+    await permissionStore.grantMultipleAccess(selectedMemberIds.value, selectedCategoryIds.value)
     closeBulkModal()
-  }, 1000)
+  } catch (err) {
+    // Error handled by store
+  }
 }
 </script>
 
@@ -60,8 +84,7 @@ const applyBulkGrant = () => {
         <div class="flex flex-col sm:flex-row lg:flex-wrap items-stretch sm:items-center gap-space-sm shrink-0">
           <button @click="openBulkModal" class="flex items-center justify-center gap-space-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-space-lg py-3 rounded-full font-label-lg transition-transform active:scale-95 shadow-sm whitespace-nowrap">
             <span class="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
-            <span>Bulk Grant Izin</span>
-            <span class="px-space-xs py-0.5 rounded-full bg-primary text-on-primary font-label-sm">FR-18</span>
+            <span>Berikan Akses Massal</span>
           </button>
           <button @click="triggerAddBudget" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-3 rounded-full font-label-lg transition-transform active:scale-95 shadow-sm whitespace-nowrap">
             <span class="material-symbols-outlined text-[20px]">add_circle</span>
@@ -80,61 +103,81 @@ const applyBulkGrant = () => {
       <GranularVisibilityMatrix @open-bulk="openBulkModal" />
 
       <!-- Bulk Grant Modal -->
-      <div v-if="showBulkModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/40 backdrop-blur-md overflow-y-auto">
-        <div class="w-full max-w-2xl bg-surface-container-lowest rounded-3xl shadow-xl p-5 sm:p-space-xl flex flex-col gap-space-md sm:gap-space-lg relative overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200 my-4">
-          <!-- Modal Header -->
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-space-sm">
-              <div class="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary">
-                <span class="material-symbols-outlined text-[28px] fill-1">security</span>
-              </div>
-              <div>
-                <div class="flex items-center gap-space-xs">
-                  <span class="font-label-sm text-label-sm uppercase font-semibold text-primary">FR-18 Otorisasi Akses Massal</span>
+      <div v-if="showBulkModal" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm" @click="closeBulkModal"></div>
+        <div class="relative min-h-full flex items-start sm:items-center justify-center p-3 sm:p-6">
+          <div class="relative w-full max-w-xl bg-surface-container-lowest rounded-2xl sm:rounded-3xl shadow-xl ring-1 ring-black/5 flex flex-col max-h-[90vh] overflow-hidden">
+            <!-- Modal Header (compact, sticky) -->
+            <div class="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-surface-container shrink-0">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary shrink-0">
+                  <span class="material-symbols-outlined text-[22px] sm:text-[24px] fill-1">security</span>
                 </div>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Konfirmasi Perubahan Izin Massal (Bulk Grant)</h3>
+                <div class="min-w-0">
+                  <span class="font-label-sm text-[11px] uppercase font-semibold text-primary">Kelola Akses Cepat</span>
+                  <h3 class="font-bold text-on-surface text-base sm:text-lg leading-tight truncate">Berikan Akses Massal</h3>
+                  <p class="text-xs sm:text-[13px] text-on-surface-variant truncate">Pilih anggota & kategori, terapkan sekaligus.</p>
+                </div>
+              </div>
+              <button @click="closeBulkModal" class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors shrink-0">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <!-- Modal Body (scrollable) -->
+            <div class="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 py-4 overflow-y-auto">
+              <!-- Info ringkas -->
+              <div class="bg-tertiary-fixed/25 px-3 py-2.5 rounded-xl flex items-center gap-2 border border-tertiary-fixed/40 text-[12px] sm:text-[13px] text-on-surface">
+                <span class="material-symbols-outlined text-tertiary text-[18px] shrink-0 fill-1">info</span>
+                <span>Anggota terpilih bisa melihat pagu & sisa anggaran kategori tersebut.</span>
+              </div>
+
+              <!-- Member & Category Selections -->
+              <div class="grid grid-cols-1 sm:grid-cols-1 gap-3">
+                <div class="flex flex-col gap-2 bg-surface-container-low p-3 rounded-md">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wider">1. Anggota ({{ selectedMemberIds.length }})</span>
+                    <button v-if="nonAdminMembers.length" @click="selectedMemberIds = selectedMemberIds.length === nonAdminMembers.length ? [] : nonAdminMembers.map(m => m.id)" class="text-[11px] font-semibold text-primary hover:underline">{{ selectedMemberIds.length === nonAdminMembers.length ? 'Hapus' : 'Semua' }}</button>
+                  </div>
+                  <div class="flex flex-col gap-1.5 max-h-36 sm:max-h-44 overflow-y-auto pr-0.5">
+                    <label v-for="member in nonAdminMembers" :key="member.id" class="flex items-center gap-2 text-on-surface bg-surface-container-lowest py-1.5 px-2.5 rounded-lg border border-surface-container text-[13px] cursor-pointer hover:border-primary/40 transition-colors">
+                      <input type="checkbox" :value="member.id" v-model="selectedMemberIds" :disabled="permissionStore.saving" class="w-4 h-4 rounded text-primary accent-primary cursor-pointer disabled:opacity-50 shrink-0" />
+                      <span class="font-medium truncate">{{ member.name }}</span>
+                    </label>
+                    <div v-if="!nonAdminMembers.length" class="text-xs text-on-surface-variant py-2 text-center">Belum ada anggota non-admin.</div>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 bg-surface-container-low p-3 rounded-md">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wider">2. Kategori ({{ selectedCategoryIds.length }})</span>
+                    <button v-if="permissionStore.categories.length" @click="selectedCategoryIds = selectedCategoryIds.length === permissionStore.categories.length ? [] : permissionStore.categories.map(c => c.id)" class="text-[11px] font-semibold text-primary hover:underline">{{ selectedCategoryIds.length === permissionStore.categories.length ? 'Hapus' : 'Semua' }}</button>
+                  </div>
+                  <div class="flex flex-col gap-1.5 max-h-36 sm:max-h-44 overflow-y-auto pr-0.5">
+                    <label v-for="category in permissionStore.categories" :key="category.id" class="flex items-center gap-2 text-on-surface bg-surface-container-lowest py-1.5 px-2.5 rounded-lg border border-surface-container text-[13px] cursor-pointer hover:border-primary/40 transition-colors">
+                      <input type="checkbox" :value="category.id" v-model="selectedCategoryIds" :disabled="permissionStore.saving" class="w-4 h-4 rounded text-primary accent-primary cursor-pointer disabled:opacity-50 shrink-0" />
+                      <span class="font-medium truncate">{{ category.name }}</span>
+                    </label>
+                    <div v-if="!permissionStore.categories.length" class="text-xs text-on-surface-variant py-2 text-center">Belum ada kategori.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="permissionStore.error" class="rounded-xl bg-error-container text-on-error-container px-3 py-2.5 text-[13px]">{{ permissionStore.error }}</div>
+              <div v-if="selectedMemberIds.length && selectedCategoryIds.length" class="bg-secondary-fixed/20 px-3 py-2.5 rounded-xl border border-secondary-fixed/50 text-[12px] sm:text-[13px] text-on-surface">
+                Beri akses <strong>{{ selectedCategoryIds.length }} kategori</strong> ke <strong>{{ selectedMemberIds.length }} anggota</strong>.
               </div>
             </div>
-            <button @click="closeBulkModal" class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
 
-          <!-- Modal Warning -->
-          <div class="bg-tertiary-fixed/30 p-space-md rounded-lg flex items-start gap-space-sm border border-tertiary-fixed/50">
-            <span class="material-symbols-outlined text-tertiary text-[24px] mt-0.5 fill-1">info</span>
-            <div class="flex flex-col gap-1">
-              <span class="font-title-md text-on-tertiary-fixed font-semibold">Peringatan Transparansi Finansial</span>
-              <p class="font-body-md text-on-surface leading-relaxed">
-                Anda akan memberikan hak akses <strong class="text-primary font-semibold">“Lihat Budget Penuh”</strong> untuk <strong>2 anggota (Budi, Dinda)</strong> pada <strong>3 kategori (Makanan, Tagihan, Pendidikan)</strong>. Anggota yang dipilih dapat melihat pagu nominal dan sisa anggaran keluarga untuk kategori tersebut.
-              </p>
+            <!-- Actions (sticky footer) -->
+            <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-surface-container bg-surface-container-lowest shrink-0">
+              <button @click="closeBulkModal" :disabled="permissionStore.saving" class="px-5 py-2.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+                Batal
+              </button>
+              <button @click="applyBulkGrant" :disabled="permissionStore.saving || !selectedMemberIds.length || !selectedCategoryIds.length" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary-container text-on-primary px-5 py-2.5 rounded-full text-sm font-semibold transition-all active:scale-95 shadow-md disabled:opacity-50">
+                <span class="material-symbols-outlined text-[18px]" :class="permissionStore.saving ? 'animate-spin' : ''">{{ permissionStore.saving ? 'refresh' : 'check_circle' }}</span>
+                <span>{{ permissionStore.saving ? 'Menyimpan...' : `Terapkan (${selectedMemberIds.length * selectedCategoryIds.length})` }}</span>
+              </button>
             </div>
-          </div>
-
-          <!-- Detail Badges -->
-          <div class="flex flex-col gap-space-xs bg-surface-container-low p-space-md rounded-lg">
-            <span class="font-label-sm text-on-surface-variant font-semibold uppercase tracking-wider">Rincian Perubahan yang Diterapkan:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mt-1">
-              <div class="flex items-center gap-space-xs bg-surface-container-lowest p-space-xs rounded-full px-space-sm shadow-sm border border-surface-container">
-                <span class="material-symbols-outlined text-primary text-[18px]">group</span>
-                <span class="font-body-sm text-on-surface font-medium">Budi Santoso & Dinda Putri</span>
-              </div>
-              <div class="flex items-center gap-space-xs bg-surface-container-lowest p-space-xs rounded-full px-space-sm shadow-sm border border-surface-container">
-                <span class="material-symbols-outlined text-secondary text-[18px]">category</span>
-                <span class="font-body-sm text-on-surface font-medium">Makanan, Tagihan, Pendidikan</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-space-sm pt-space-xs">
-            <button @click="closeBulkModal" class="px-space-lg py-3 rounded-full font-label-lg text-on-surface-variant hover:bg-surface-container transition-colors">
-              Batal
-            </button>
-            <button @click="applyBulkGrant" class="flex items-center justify-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-xl py-3 rounded-full font-label-lg font-semibold transition-all active:scale-95 shadow-md whitespace-nowrap">
-              <span class="material-symbols-outlined text-[20px]">check_circle</span>
-              <span>Terapkan Izin Massal</span>
-            </button>
           </div>
         </div>
       </div>

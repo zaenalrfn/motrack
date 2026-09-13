@@ -4,6 +4,7 @@ import { useTransactionStore } from '../../stores/useTransactionStore'
 import { usePermissionStore } from '../../stores/usePermissionStore'
 import { useAuthStore } from '../../stores/useAuthStore'
 import type { TransactionType } from '../../services/transactionService'
+import { formatRupiah, parseRupiah } from '../../utils/currency'
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits<{ (event: 'close'): void; (event: 'saved'): void }>()
@@ -12,11 +13,15 @@ const permissionStore = usePermissionStore()
 const authStore = useAuthStore()
 
 const type = ref<TransactionType>('expense')
-const amount = ref('')
+const displayAmount = ref('')
 const categoryId = ref('')
 const date = ref(new Date().toISOString().split('T')[0])
 const note = ref('')
 const formError = ref('')
+
+watch(displayAmount, (newVal) => {
+  displayAmount.value = formatRupiah(newVal)
+})
 
 const categories = computed(() => store.categories
   .filter((category) => category.type === type.value)
@@ -47,7 +52,7 @@ watch(() => props.isOpen, (open) => {
 })
 
 const handleSave = async () => {
-  const numericAmount = Number(amount.value)
+  const numericAmount = parseRupiah(displayAmount.value)
   if (!categoryId.value) {
     formError.value = 'Pilih kategori terlebih dahulu.'
     return
@@ -73,7 +78,7 @@ const handleSave = async () => {
     await store.addTransaction({ categoryId: categoryId.value, type: type.value, amount: numericAmount, date: date.value, note: note.value.trim() })
     emit('saved')
     emit('close')
-    amount.value = ''
+    displayAmount.value = ''
     note.value = ''
   } catch (error) {
     formError.value = error instanceof Error ? error.message : 'Gagal menyimpan transaksi.'
@@ -100,7 +105,7 @@ const handleSave = async () => {
       </div>
 
       <form @submit.prevent="handleSave" class="space-y-4">
-        <div><label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Nominal (Rp)</label><input v-model="amount" type="number" min="100" required placeholder="0" :disabled="store.saving" class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary font-headline-sm text-xl font-bold disabled:opacity-60"></div>
+        <div><label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Nominal (Rp)</label><input v-model="displayAmount" type="text" inputmode="numeric" required placeholder="0" :disabled="store.saving" class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary font-headline-sm text-xl font-bold disabled:opacity-60 tabular-nums"></div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Kategori</label><select v-model="categoryId" required :disabled="store.saving || !categories.length" class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary text-sm disabled:opacity-60"><option v-if="!categories.length" value="">{{ authStore.currentMember?.role === 'admin' ? 'Belum ada kategori' : 'Belum ada akses kategori' }}</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></div><div><label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Tanggal</label><input v-model="date" type="date" required :disabled="store.saving" class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary text-sm disabled:opacity-60"></div></div>
         <div><label class="font-label-sm text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Catatan</label><input v-model="note" type="text" placeholder="Contoh: Belanja bulanan" :disabled="store.saving" class="w-full bg-surface-container-low text-on-surface px-4 py-3 rounded-2xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary text-sm disabled:opacity-60"></div>
         <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-container"><button type="button" :disabled="store.saving" @click="emit('close')" class="px-5 py-3 rounded-full hover:bg-surface-container text-on-surface font-label-md text-sm disabled:opacity-50">Batal</button><button type="submit" :disabled="store.saving || !categories.length" class="flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary-container text-on-primary font-label-md text-sm font-semibold shadow-md disabled:opacity-50"><span v-if="store.saving" class="material-symbols-outlined text-[18px] animate-spin">refresh</span>{{ store.saving ? 'Menyimpan...' : 'Simpan Transaksi' }}</button></div>

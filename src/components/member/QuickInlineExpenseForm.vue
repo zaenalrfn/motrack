@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '../../stores/useAuthStore'
 import { useTransactionStore } from '../../stores/useTransactionStore'
 import { usePermissionStore } from '../../stores/usePermissionStore'
+import { formatRupiah, parseRupiah } from '../../utils/currency'
 
 const transactionStore = useTransactionStore()
 const permissionStore = usePermissionStore()
 const authStore = useAuthStore()
 
-const amount = ref('')
+const displayAmount = ref('')
 const categoryId = ref('')
 const date = ref(new Date().toISOString().slice(0, 10))
 const note = ref('')
 const successMessage = ref('')
+
+watch(displayAmount, (newVal) => {
+  displayAmount.value = formatRupiah(newVal)
+})
 
 const memberId = computed(() => authStore.currentMember?.id as string | undefined)
 
@@ -30,7 +35,7 @@ onMounted(async () => {
 })
 
 const handleQuickSave = async () => {
-  const numericAmount = Number(amount.value)
+  const numericAmount = parseRupiah(displayAmount.value)
   if (!numericAmount || numericAmount <= 0) {
     alert('Silakan masukkan jumlah pengeluaran terlebih dahulu.')
     return
@@ -44,7 +49,7 @@ const handleQuickSave = async () => {
       date: date.value,
       note: note.value.trim(),
     })
-    amount.value = ''
+    displayAmount.value = ''
     note.value = ''
     successMessage.value = 'Transaksi berhasil disimpan!'
     setTimeout(() => { successMessage.value = '' }, 3000)
@@ -76,7 +81,7 @@ const handleQuickSave = async () => {
         <label class="font-label-sm text-label-sm text-on-surface font-semibold" for="quick-amount">Jumlah Pengeluaran (Rp)</label>
         <div class="relative flex items-center">
           <span class="absolute left-3 font-semibold text-primary text-sm">Rp</span>
-          <input v-model="amount" class="w-full bg-surface-container-low text-on-surface font-semibold pl-10 pr-3 py-2 rounded-DEFAULT text-sm border-0 focus:ring-2 focus:ring-primary transition-all tabular-nums" id="quick-amount" placeholder="50.000" type="number" min="1" />
+          <input v-model="displayAmount" class="w-full bg-surface-container-low text-on-surface font-semibold pl-10 pr-3 py-2 rounded-DEFAULT text-sm border-0 focus:ring-2 focus:ring-primary transition-all tabular-nums" id="quick-amount" placeholder="50.000" type="text" inputmode="numeric" required :disabled="transactionStore.saving" />
         </div>
       </div>
       <div class="md:col-span-3 flex flex-col gap-1">

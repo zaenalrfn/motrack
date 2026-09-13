@@ -8,10 +8,12 @@ export interface ActiveMember {
   user_id: string
   name: string
   role: MemberRole
-  status: 'active'
+  status: 'active' | 'removed'
   created_at: string
+  updated_at?: string
   email: string | null
   has_password?: boolean
+  transaction_count?: number
 }
 
 export interface CreatedMember {
@@ -19,7 +21,7 @@ export interface CreatedMember {
   name: string
   email: string
   role: MemberRole
-  status: 'active'
+  status: 'active' | 'removed'
 }
 
 export interface CreateMemberAccountInput {
@@ -114,6 +116,41 @@ export async function deleteHouseholdMember(memberId: string, mode: 'soft' | 'pe
   })
   if (error) throw error
 }
+
+export async function getRemovedMembers(householdId: string): Promise<ActiveMember[]> {
+  const { data, error } = await supabase
+    .from('members')
+    .select('id, household_id, user_id, name, role, status, created_at')
+    .eq('household_id', householdId)
+    .eq('status', 'removed')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const members = (data ?? []) as ActiveMember[]
+
+  const withCounts = await Promise.all(members.map(async (member) => {
+    const { count, error: countError } = await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('household_id', householdId)
+      .eq('created_by', member.id)
+    if (countError) throw countError
+    return { ...member, email: null, transaction_count: count ?? 0 }
+  }))
+
+  return withCounts
+}
+
+export async function restoreHouseholdMember(memberId: string): Promise<void> {
+  const { error } = await supabase
+    .from('members')
+    .update({ status: 'active' })
+    .eq('id', memberId)
+    .eq('status', 'removed')
+  if (error) throw error
+}
+
 
 export async function regenerateMemberMagicLink(input: {
   householdId: string

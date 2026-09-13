@@ -90,6 +90,29 @@ export const usePermissionStore = defineStore('permission', () => {
     }
   }
 
+  const grantMultipleAccess = async (memberIds: string[], categoryIds: string[]) => {
+    saving.value = true
+    error.value = ''
+    try {
+      const promises = []
+      for (const memberId of memberIds) {
+        for (const categoryId of categoryIds) {
+          if (!hasAccess(memberId, categoryId)) {
+            promises.push(grantCategoryAccess(memberId, categoryId).then(grant => grants.value.push(grant)))
+          }
+        }
+      }
+      await Promise.all(promises)
+      lastLoadedAt = Date.now()
+    } catch (caught) {
+      const details = caught as { code?: string; message?: string; hint?: string }
+      error.value = [details.code, details.message, details.hint].filter(Boolean).join(' — ') || 'Gagal memberikan akses massal.'
+      throw caught
+    } finally {
+      saving.value = false
+    }
+  }
+
   return {
     members,
     categories,
@@ -101,5 +124,6 @@ export const usePermissionStore = defineStore('permission', () => {
     loadMatrix,
     hasAccess,
     toggleAccess,
+    grantMultipleAccess,
   }
 })
